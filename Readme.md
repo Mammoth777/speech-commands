@@ -2,7 +2,20 @@
 
 基于 Web SpeechRecognition 的触发词识别
 
-## Features
+## 快速开始
+
+```bash
+const manager = new SpeechCommandsManager({ lang: 'zh-CN' }); // default lang is 'zh-CN'
+
+manager.addCommand('你好', () => {
+  console.log('你好 👋');
+});
+
+manager.start();
+manager.stop();
+```
+
+## 功能
 
 - [ ] 动态设置触发词
 - [ ] 识别触发词

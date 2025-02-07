@@ -1,57 +1,88 @@
-import './style.css';
 import pinyin from 'pinyin';
-import { showMatch } from './match'
 
-const MatchWord = '你好小英'
-document.getElementById('matchWord')!.innerText = MatchWord
-const ReMatchTime = 2000
-
-function transfer(text: string) {
-  return pinyin(text, {
-    // style: pinyin.STYLE_TONE2
-    style: pinyin.STYLE_NORMAL
-  }).join(' ')
-}
-
-let lastMatchTime = 0
-function handle() {
-  console.log(lastMatchTime, 'lm')
-  const matchTime = Date.now()
-  if (matchTime - lastMatchTime < ReMatchTime) {
-    console.log('multiple match')
-  } else {
-    console.log(matchTime - lastMatchTime, 'diff')
-    lastMatchTime = matchTime
-    // alert('meet')
-    showMatch(true)
+/**
+ * 语音识别命令匹配器
+ * 
+ * 1. 是否区分音调
+ * 2. 是否区分前后鼻音 an/ang, en/eng, in/ing
+ * 3. 声母 z/zh, c/ch, s/sh
+ */
+class Matcher {
+  private map: Map<string, () => void> = new Map()
+  private transfer(text: string) {
+    return pinyin(text, {
+      // style: pinyin.STYLE_TONE2
+      style: pinyin.STYLE_NORMAL
+    })
+  }
+  // 是否区分***
+  options = {
+    'an/ang': true,
+    'en/eng': true,
+    'in/ing': true,
+    'z/zh': true,
+    'c/ch': true,
+    's/sh': true,
+  }
+  matchSingleCommand(command: string, transcript: string) {
+    const t = this.transfer
+    const p1 = t(command).join(' ')
+    const p2 = t(transcript).join(' ')
+    // todo 区分前后鼻音之类的
+    return p2.includes(p1); // 完全匹配
+  }
+  match(transcript: string) {
+    for (const command in this.map.keys()) {
+      if (this.matchSingleCommand(command, transcript)) {
+        return this.map.get(command)
+      }
+    }
+  }
+  addCommand(command: string, handle: () => void) {
+    if (this.map.has(command)) {
+      console.warn('command already exists, will be overwritten')
+    }
+    this.map.set(command, handle)
+  }
+  removeCommand(command: string) {
+    this.map.delete(command)
+  }
+  getCommands() {
+    return this.map.keys()
   }
 }
 
-window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-function match(command: string, transcript: string) {
-  const p1 = transfer(command)
-  const p2 = transfer(transcript)
-  return p2.indexOf(p1) > -1;
+export type SpeechCommandsManagerOptions = {
+  rematchTime?: number
 }
 
-if (!window.SpeechRecognition) {
-  console.error('Web Speech API is not supported in this browser.');
-} else {
-  const recognition = new window.SpeechRecognition();
-  recognition.continuous = true;
-  recognition.interimResults = true;
-  recognition.lang = 'zh-CN';
+export class SpeechCommandsManager {
+  static SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  private matcher = new Matcher()
+  match(transcript: string) {
+    return this.matcher.match(transcript)
+  }
+  private rematchTime = 2000;
+  constructor(options?: SpeechCommandsManagerOptions) {
+    if (!SpeechCommandsManager.SpeechRecognition) {
+      console.error('Web Speech API is not supported in this browser.');
+    }
+    this.rematchTime = options?.rematchTime || 2000
+  }
 
-  recognition.onstart = () => {
-    // console.log('Speech recognition started.');
-  };
+  private recognition: SpeechRecognition = new SpeechCommandsManager.SpeechRecognition();
 
-  recognition.onresult = (event: SpeechRecognitionEvent) => {
+  onstart() { }
+
+  onerror(event: SpeechRecognitionErrorEvent) {
+    console.error('无麦克风或无权限', event.error);
+  }
+
+  onend() { }
+
+  private onresult(event: SpeechRecognitionEvent) {
     let interimTranscript = '';
     let finalTranscript = '';
-
-    // console.log(event)
 
     for (let i = event.resultIndex; i < event.results.length; ++i) {
       if (event.results[i].isFinal) {
@@ -61,24 +92,74 @@ if (!window.SpeechRecognition) {
       }
     }
 
-    if (match(MatchWord, interimTranscript)) {
+    const handle = this.match(interimTranscript)
+    if (handle) {
+      const ignore = this.debounce()
+      if (ignore) {
+        return
+      }
       handle()
     }
-    
+
 
     console.log('Interim Transcript: ', interimTranscript);
-    // console.log('Final Transcript: ', finalTranscript);
-  };
+  }
 
-  recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-    console.error('Speech recognition error', event.error);
-  };
+  private lastMatchTime = 0
 
-  recognition.onend = () => {
-    console.log('Speech recognition ended.');
-    // recognition.start();
-  };
+  private debounce() {
+    const lastMatchTime = this.lastMatchTime
+    console.log(lastMatchTime, 'lm')
+    const matchTime = Date.now()
+    if (matchTime - lastMatchTime < this.rematchTime) {
+      console.log('multiple match')
+      return true
+    } else {
+      console.log(matchTime - lastMatchTime, 'diff')
+      this.lastMatchTime = matchTime
+      return false
+    }
+  }
 
-  // Start the speech recognition
-  recognition.start();
+  /**
+   * 是否支持语音识别
+   */
+  isSupported() {
+    return !!SpeechCommandsManager.SpeechRecognition;
+  }
+
+  /**
+   * 开始监听
+   */
+  start() {
+    const recognition = this.recognition;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'zh-CN';
+    recognition.onstart = this.onstart;
+    recognition.onerror = this.onerror;
+    recognition.onend = this.onend;
+    recognition.onresult = this.onresult;
+    recognition.start();
+  }
+
+  /**
+   * 结束监听
+   */
+  stop() {
+    this.recognition.stop();
+  }
+
+  addCommand(command: string, handle: () => void) {
+    return this.matcher.addCommand(command, handle)
+  }
+
+  removeCommand(command: string) {
+    return this.matcher.removeCommand(command)
+  }
+
+  getCommands() {
+    return this.matcher.getCommands()
+  }
+
 }
