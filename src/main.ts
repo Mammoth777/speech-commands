@@ -32,7 +32,7 @@ class Matcher {
     return p2.includes(p1); // 完全匹配
   }
   match(transcript: string) {
-    for (const command in this.map.keys()) {
+    for (const command of this.map.keys()) {
       if (this.matchSingleCommand(command, transcript)) {
         return this.map.get(command)
       }
@@ -139,7 +139,7 @@ export class SpeechCommandsManager {
     recognition.onstart = this.onstart;
     recognition.onerror = this.onerror;
     recognition.onend = this.onend;
-    recognition.onresult = this.onresult;
+    recognition.onresult = this.onresult.bind(this);
     recognition.start();
   }
 
