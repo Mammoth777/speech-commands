@@ -35,7 +35,7 @@ class Matcher {
     return p2.includes(p1); // 完全匹配
   }
   match(transcript: string) {
-    for (const command in this.map.keys()) {
+    for (const command of this.map.keys()) {
       if (this.matchSingleCommand(command, transcript)) {
         return this.map.get(command)
       }
