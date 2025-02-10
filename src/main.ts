@@ -1,4 +1,7 @@
 import pinyin from 'pinyin';
+import { ISpeechRecognition } from './speechRecognitions/type';
+import { WebApiSpeechRecognition } from './speechRecognitions/webapi/webapi';
+import { XfSpeechRecognition } from './speechRecognitions/xf/xf';
 
 /**
  * 语音识别命令匹配器
@@ -54,55 +57,35 @@ class Matcher {
 
 export type SpeechCommandsManagerOptions = {
   rematchTime?: number
+  recognizer: 'webapi' | 'xf'
 }
 
 export class SpeechCommandsManager {
-  static SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
   private matcher = new Matcher()
   match(transcript: string) {
     return this.matcher.match(transcript)
   }
   private rematchTime = 2000;
+  private recognition;
   constructor(options?: SpeechCommandsManagerOptions) {
-    if (!SpeechCommandsManager.SpeechRecognition) {
-      console.error('Web Speech API is not supported in this browser.');
+    if (options?.recognizer === 'xf') {
+      this.recognition = new XfSpeechRecognition()
+    } else {
+      this.recognition = new WebApiSpeechRecognition()
     }
     this.rematchTime = options?.rematchTime || 2000
   }
 
-  private recognition: SpeechRecognition = new SpeechCommandsManager.SpeechRecognition();
-
-  onstart() { }
+  onstart() {
+    console.log('main.ts start')
+  }
 
   onerror(event: SpeechRecognitionErrorEvent) {
     console.error('无麦克风或无权限', event.error);
   }
 
-  onend() { }
-
-  private onresult(event: SpeechRecognitionEvent) {
-    let interimTranscript = '';
-    let finalTranscript = '';
-
-    for (let i = event.resultIndex; i < event.results.length; ++i) {
-      if (event.results[i].isFinal) {
-        finalTranscript += event.results[i][0].transcript;
-      } else {
-        interimTranscript += event.results[i][0].transcript;
-      }
-    }
-
-    const handle = this.match(interimTranscript)
-    if (handle) {
-      const ignore = this.debounce()
-      if (ignore) {
-        return
-      }
-      handle()
-    }
-
-
-    console.log('Interim Transcript: ', interimTranscript);
+  onend() {
+    console.log('main.ts end')
   }
 
   private lastMatchTime = 0
@@ -121,26 +104,29 @@ export class SpeechCommandsManager {
     }
   }
 
-  /**
-   * 是否支持语音识别
-   */
-  isSupported() {
-    return !!SpeechCommandsManager.SpeechRecognition;
+  onmessage(message: string) {
+    const handle = this.match(message)
+    if (handle) {
+      const ignore = this.debounce()
+      if (ignore) {
+        return
+      }
+      handle()
+    }
+    console.log('message: ', message)
   }
 
   /**
    * 开始监听
    */
   start() {
-    const recognition = this.recognition;
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'zh-CN';
-    recognition.onstart = this.onstart;
-    recognition.onerror = this.onerror;
-    recognition.onend = this.onend;
-    recognition.onresult = this.onresult;
-    recognition.start();
+    this.recognition.start({
+      onstart: this.onstart,
+      onerror: this.onerror,
+      onend: this.onend,
+      onmessage: this.onmessage.bind(this)
+    });
+    console.log(this.recognition, 'recognition')
   }
 
   /**
