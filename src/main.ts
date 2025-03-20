@@ -1,7 +1,9 @@
 import pinyin from 'pinyin';
-import { ISpeechRecognition } from './speechRecognitions/type';
 import { WebApiSpeechRecognition } from './speechRecognitions/webapi/webapi';
 import { XfSpeechRecognition } from './speechRecognitions/xf/xf';
+import { VoskSpeechRecognition } from './speechRecognitions/vosk/vosk';
+import { VoskBrowserSpeechRecognition } from './speechRecognitions/vosk-browser/vosk-browser';
+import { WhisperSpeechRecognition } from './speechRecognitions/whisper/whisper';
 
 /**
  * 语音识别命令匹配器
@@ -57,7 +59,7 @@ class Matcher {
 
 export type SpeechCommandsManagerOptions = {
   rematchTime?: number
-  recognizer: 'webapi' | 'xf'
+  recognizer: 'webapi' | 'xf' | 'vosk' | 'vosk-browser' | 'whisper'
 }
 
 export class SpeechCommandsManager {
@@ -70,6 +72,12 @@ export class SpeechCommandsManager {
   constructor(options?: SpeechCommandsManagerOptions) {
     if (options?.recognizer === 'xf') {
       this.recognition = new XfSpeechRecognition()
+    } else if (options?.recognizer === 'vosk') {
+      this.recognition = new VoskSpeechRecognition()
+    } else if (options?.recognizer === 'vosk-browser') {
+      this.recognition = new VoskBrowserSpeechRecognition()
+    } else if (options?.recognizer === 'whisper') {
+      this.recognition = new WhisperSpeechRecognition()
     } else {
       this.recognition = new WebApiSpeechRecognition()
     }
@@ -92,10 +100,10 @@ export class SpeechCommandsManager {
 
   private debounce() {
     const lastMatchTime = this.lastMatchTime
-    console.log(lastMatchTime, 'lm')
+    // console.log(lastMatchTime, 'lm')
     const matchTime = Date.now()
     if (matchTime - lastMatchTime < this.rematchTime) {
-      console.log('multiple match')
+      // console.log('multiple match')
       return true
     } else {
       console.log(matchTime - lastMatchTime, 'diff')
@@ -105,6 +113,7 @@ export class SpeechCommandsManager {
   }
 
   onmessage(message: string) {
+    message = message.replace(/\s/g, '')
     const handle = this.match(message)
     if (handle) {
       const ignore = this.debounce()
