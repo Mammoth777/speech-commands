@@ -7,13 +7,33 @@ document.getElementById('matchWord')!.innerText = MatchWord
 // const sc = new SpeechCommandsManager()
 // const sc = new SpeechCommandsManager({ recognizer: 'xf' })
 // const sc = new SpeechCommandsManager({ recognizer: 'vosk' })
-const sc = new SpeechCommandsManager({ recognizer: 'vosk-browser' })
+// const sc = new SpeechCommandsManager({ recognizer: 'vosk-browser' })
 // const sc = new SpeechCommandsManager({ recognizer: 'whisper' })
-const matchMsg = document.getElementById('matchMsg')!
-sc.addCommand(MatchWord, () => {
-  matchMsg.classList.add('highlight')
-  setTimeout(() => {
-    matchMsg.classList.remove('highlight')
-  }, 1000);
+let sc: SpeechCommandsManager
+function run(type: 'xf' | 'vosk' | 'vosk-browser' | 'whisper') {
+  sc = new SpeechCommandsManager({ recognizer: type })
+  const matchMsg = document.getElementById('matchMsg')!
+  sc.addCommand(MatchWord, () => {
+    matchMsg.classList.add('highlight')
+    setTimeout(() => {
+      matchMsg.classList.remove('highlight')
+    }, 1000);
+  })
+  sc.start()
+}
+
+document.getElementById('stop')?.addEventListener('click', () => {
+  console.log('stop')
+  sc.stop()
 })
-sc.start()
+
+document.getElementById('startXf')?.addEventListener('click', () => {
+  console.log('start xf')
+  run('xf')
+})
+
+document.getElementById('startVb')?.addEventListener('click', () => {
+  console.log('start vosk browser')
+  run('vosk-browser')
+})
+

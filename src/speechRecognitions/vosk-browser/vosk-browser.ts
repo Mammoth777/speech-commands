@@ -5,7 +5,11 @@ declare const Vosk: any;
 
 export class VoskBrowserSpeechRecognition extends ISpeechRecognition {
   private recognition!: any;
-  private mediaRecorder!: MediaRecorder;
+  // private mediaRecorder!: MediaRecorder;
+  private source!: MediaStreamAudioSourceNode;
+  private recognizerProcessor!: AudioWorkletNode;
+  private audioContext!: AudioContext;
+  private mediaStream!: MediaStream;
 
   constructor() {
     super();
@@ -53,7 +57,7 @@ export class VoskBrowserSpeechRecognition extends ISpeechRecognition {
 
     fullResult = "Ready";
 
-    const mediaStream = await navigator.mediaDevices.getUserMedia({
+    const mediaStream = this.mediaStream = await navigator.mediaDevices.getUserMedia({
       video: false,
       audio: {
         echoCancellation: true,
@@ -63,14 +67,15 @@ export class VoskBrowserSpeechRecognition extends ISpeechRecognition {
       },
     });
 
-    const audioContext = new AudioContext();
+    const audioContext = this.audioContext = new AudioContext();
     await audioContext.audioWorklet.addModule('recognizer-processor.js')
-    const recognizerProcessor = new AudioWorkletNode(audioContext, 'recognizer-processor', { channelCount: 1, numberOfInputs: 1, numberOfOutputs: 1 });
+    const recognizerProcessor = this.recognizerProcessor = new AudioWorkletNode(audioContext, 'recognizer-processor', { channelCount: 1, numberOfInputs: 1, numberOfOutputs: 1 });
     recognizerProcessor.port.postMessage({ action: 'init', recognizerId: recognizer.id }, [channel.port2])
     recognizerProcessor.connect(audioContext.destination);
 
-    const source = audioContext.createMediaStreamSource(mediaStream);
+    const source = this.source = audioContext.createMediaStreamSource(mediaStream);
     source.connect(recognizerProcessor);
+
   }
 
   start(opt: any): void {
@@ -84,7 +89,28 @@ export class VoskBrowserSpeechRecognition extends ISpeechRecognition {
   }
 
   stop(): void {
-    this.mediaRecorder.stop();
+    // 1. 断开音频处理管道
+    if (this.source) {
+      this.source.disconnect();
+    }
+    
+    if (this.recognizerProcessor) {
+      this.recognizerProcessor.disconnect();
+    }
+    
+    // 2. 停止所有媒体轨道
+    if (this.mediaStream) {
+      this.mediaStream.getTracks().forEach(track => {
+        track.stop();
+      });
+    }
+    
+    // 3. 关闭音频上下文
+    if (this.audioContext && this.audioContext.state !== 'closed') {
+      this.audioContext.close().catch(err => {
+        console.error('关闭音频上下文时出错:', err);
+      });
+    }
   }
 
   onstart(): void {
