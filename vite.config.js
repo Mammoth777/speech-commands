@@ -9,4 +9,10 @@ export default {
       },
     },
   },
+  build: {
+    lib: {
+      entry: 'src/main.ts',
+      name: 'speech-commands',
+    }
+  }
 }

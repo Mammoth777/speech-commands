@@ -1,6 +1,14 @@
 import { ISpeechRecognition } from "../type";
+import * as Vosk from 'vosk-browser'
+// declare const Vosk: any;
 
-declare const Vosk: any;
+// 使用 import.meta.url 获取资源路径
+function getStaticSrcUrl(path: string) {
+  return new URL(path, import.meta.url).href;
+}
+
+const RecognizerProcessorJs = getStaticSrcUrl('../../../public/recognizer-processor.js');
+const VoskModelSmallModel = getStaticSrcUrl('../../../public/vosk-model.tar.gz');
 
 
 export class VoskBrowserSpeechRecognition extends ISpeechRecognition {
@@ -19,7 +27,7 @@ export class VoskBrowserSpeechRecognition extends ISpeechRecognition {
   private async init() {
     console.log('init')
     const channel = new MessageChannel();
-    const model = await Vosk.createModel('/models/vosk-model-small.tar.gz');
+    const model = await Vosk.createModel(VoskModelSmallModel);
     // const model = await Vosk.createModel('/models/vosk-model.tar.gz');
     model.registerPort(channel.port1);
 
@@ -64,7 +72,7 @@ export class VoskBrowserSpeechRecognition extends ISpeechRecognition {
     });
 
     const audioContext = new AudioContext();
-    await audioContext.audioWorklet.addModule('recognizer-processor.js')
+    await audioContext.audioWorklet.addModule(RecognizerProcessorJs)
     const recognizerProcessor = new AudioWorkletNode(audioContext, 'recognizer-processor', { channelCount: 1, numberOfInputs: 1, numberOfOutputs: 1 });
     recognizerProcessor.port.postMessage({ action: 'init', recognizerId: recognizer.id }, [channel.port2])
     recognizerProcessor.connect(audioContext.destination);

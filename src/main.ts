@@ -1,9 +1,9 @@
 import pinyin from 'pinyin';
-import { WebApiSpeechRecognition } from './speechRecognitions/webapi/webapi';
-import { XfSpeechRecognition } from './speechRecognitions/xf/xf';
-import { VoskSpeechRecognition } from './speechRecognitions/vosk/vosk';
+// import { WebApiSpeechRecognition } from './speechRecognitions/webapi/webapi';
+// import { XfSpeechRecognition } from './speechRecognitions/xf/xf';
+// import { VoskSpeechRecognition } from './speechRecognitions/vosk/vosk';
 import { VoskBrowserSpeechRecognition } from './speechRecognitions/vosk-browser/vosk-browser';
-import { WhisperSpeechRecognition } from './speechRecognitions/whisper/whisper';
+// import { WhisperSpeechRecognition } from './speechRecognitions/whisper/whisper';
 
 /**
  * 语音识别命令匹配器
@@ -70,17 +70,18 @@ export class SpeechCommandsManager {
   private rematchTime = 2000;
   private recognition;
   constructor(options?: SpeechCommandsManagerOptions) {
-    if (options?.recognizer === 'xf') {
-      this.recognition = new XfSpeechRecognition()
-    } else if (options?.recognizer === 'vosk') {
-      this.recognition = new VoskSpeechRecognition()
-    } else if (options?.recognizer === 'vosk-browser') {
-      this.recognition = new VoskBrowserSpeechRecognition()
-    } else if (options?.recognizer === 'whisper') {
-      this.recognition = new WhisperSpeechRecognition()
-    } else {
-      this.recognition = new WebApiSpeechRecognition()
-    }
+    // if (options?.recognizer === 'xf') {
+    //   this.recognition = new XfSpeechRecognition()
+    // } else if (options?.recognizer === 'vosk') {
+    //   this.recognition = new VoskSpeechRecognition()
+    // } else if (options?.recognizer === 'vosk-browser') {
+    //   this.recognition = new VoskBrowserSpeechRecognition()
+    // } else if (options?.recognizer === 'whisper') {
+    //   this.recognition = new WhisperSpeechRecognition()
+    // } else {
+    //   this.recognition = new WebApiSpeechRecognition()
+    // }
+    this.recognition = new VoskBrowserSpeechRecognition()
     this.rematchTime = options?.rematchTime || 2000
   }
 

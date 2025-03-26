@@ -17,10 +17,9 @@ let input: any;               // 麦克风输入源
 let stream: any;              // 媒体流
 
 const targetSampleRate = 16000;  // Vosk 要求的采样率
-// const targetSampleRate = 8000;  // 尝试更小的帧， 提高识别速度
 
 // 开始录音函数
-async function startRecording(callback: (m: string) => void) {
+function startRecording(callback: (m: string) => void) {
   // 初始化 WebSocket，连接到 Vosk server
   ws = new WebSocket('ws://localhost:2700');
   ws.binaryType = 'arraybuffer';
@@ -47,34 +46,36 @@ async function startRecording(callback: (m: string) => void) {
     console.error("WebSocket 错误：", error);
   };
 
-  try {
-    // 获取麦克风权限，并设置音频处理
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    // 创建 AudioContext
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    // 创建媒体流输入节点
-    input = audioContext.createMediaStreamSource(stream);
+  // 获取麦克风权限，并设置音频处理
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(function(s) {
+      stream = s;
+      // 创建 AudioContext
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      // 创建媒体流输入节点
+      input = audioContext.createMediaStreamSource(s);
 
-    // 创建 ScriptProcessorNode
-    // bufferSize 可以根据需要调整，一般取 1024 ~ 4096
-    processor = audioContext.createScriptProcessor(4096, 1, 1);
-    input.connect(processor);
-    // processor.connect(destination) 为防止垃圾回收，此处将其连接到 AudioContext.destination
-    processor.connect(audioContext.destination);
+      // 创建 ScriptProcessorNode
+      // bufferSize 可以根据需要调整，一般取 1024 ~ 4096
+      processor = audioContext.createScriptProcessor(4096, 1, 1);
+      input.connect(processor);
+      // processor.connect(destination) 为防止垃圾回收，此处将其连接到 AudioContext.destination
+      processor.connect(audioContext.destination);
 
-    // 处理音频数据
-    processor.onaudioprocess = function(e) {
-      // 获取第一个声道的 Float32Array 数据
-      const channelData = e.inputBuffer.getChannelData(0);
-      // 将数据降采样并转换为 16-bit PCM 数据（二进制 ArrayBuffer）
-      const downsampledBuffer = downsampleBuffer(channelData, audioContext.sampleRate, targetSampleRate);
-      if (downsampledBuffer && ws.readyState === WebSocket.OPEN) {
-        ws.send(downsampledBuffer);
-      }
-    };
-  } catch (err) {
-    console.error('获取麦克风失败：', err);
-  }
+      // 处理音频数据
+      processor.onaudioprocess = function(e) {
+        // 获取第一个声道的 Float32Array 数据
+        const channelData = e.inputBuffer.getChannelData(0);
+        // 将数据降采样并转换为 16-bit PCM 数据（二进制 ArrayBuffer）
+        const downsampledBuffer = downsampleBuffer(channelData, audioContext.sampleRate, targetSampleRate);
+        if (downsampledBuffer && ws.readyState === WebSocket.OPEN) {
+          ws.send(downsampledBuffer);
+        }
+      };
+    })
+    .catch(function(err) {
+      console.error('获取麦克风失败：', err);
+    });
 
 }
 
