@@ -46,8 +46,8 @@ async function startRecording(callback: (m: string) => void) {
       const data = JSON.parse(message.data);
       const text = filter(data.partial || data.text)
       if (text) {
-        // const d = new Date();
-        // console.log(`${d.getMinutes()}:${d.getSeconds()}:${d.getMilliseconds()} ${text}`)
+        const d = new Date();
+        console.log(`${d.getMinutes()}:${d.getSeconds()}:${d.getMilliseconds()} ${text}`)
         callback(text);
       }
     } catch (e) {
