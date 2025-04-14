@@ -31,12 +31,24 @@ async function startRecording(callback: (m: string) => void) {
     ws.send(JSON.stringify({ config: { sample_rate: targetSampleRate } }));
   };
 
+  let prev = ''
+  const filter = (text: string) => {
+    if (!text) return ''
+    text = text.replace(/\s/g, '');
+    if (text === prev) return ''
+    prev = text
+    return text
+  }
+
   ws.onmessage = (message) => {
     // 接收服务器返回的 JSON 数据并解析识别结果
     try {
       const data = JSON.parse(message.data);
-      if (data.text) {
-        callback(data.text);
+      const text = filter(data.partial || data.text)
+      if (text) {
+        const d = new Date();
+        console.log(`${d.getMinutes()}:${d.getSeconds()}:${d.getMilliseconds()} ${text}`)
+        callback(text);
       }
     } catch (e) {
       console.error("解析服务器返回数据错误：", e);

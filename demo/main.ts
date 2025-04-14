@@ -37,3 +37,8 @@ document.getElementById('startVb')?.addEventListener('click', () => {
   run('vosk-browser')
 })
 
+document.getElementById('startVosk')?.addEventListener('click', () => {
+  console.log('start vosk')
+  run('vosk')
+})
+

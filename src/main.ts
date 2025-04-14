@@ -116,6 +116,8 @@ export class SpeechCommandsManager {
     message = message.replace(/\s/g, '')
     const handle = this.match(message)
     if (handle) {
+      // const d = new Date();
+      // console.log(`${d.getMinutes()}:${d.getSeconds()}:${d.getMilliseconds()} ${message}`)
       const ignore = this.debounce()
       if (ignore) {
         return
